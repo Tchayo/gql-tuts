@@ -1,22 +1,71 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	//"github.com/Tchayo/gql-tuts.git/internal/handlers"
-	//"github.com/Tchayo/gql-tuts.git/pkg/utils"
+	"github.com/Tchayo/gql-tuts.git/internal/gql/models"
+	"github.com/Tchayo/gql-tuts.git/internal/gql/queries"
+	"github.com/Tchayo/gql-tuts.git/internal/handlers"
+	"github.com/Tchayo/gql-tuts.git/pkg/utils"
+	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 	"log"
 
-	//"github.com/gin-gonic/gin"
 	"github.com/graphql-go/graphql"
+	_ "github.com/jinzhu/gorm/dialects/postgres" //postgres database driver
 )
 
-//var host, port string
-//
-//func init() {
-//	host = utils.MustGet("GQL_SERVER_HOST")
-//	port = utils.MustGet("GQL_SERVER_PORT")
-//}
+var Host, Port, DbHost, DbPort, DbUser, DbName, DbPassword string
+
+func init() {
+	Host = utils.MustGet("SERVER_HOST")
+	Port = utils.MustGet("SERVER_PORT")
+	DbHost = utils.MustGet("DB_HOST")
+	DbPort = utils.MustGet("DB_PORT")
+	DbUser = utils.MustGet("DB_USER")
+	DbName = utils.MustGet("DB_NAME")
+	DbPassword = utils.MustGet("DB_NAME")
+}
+
+func initializeApi() (*gorm.DB, error) {
+	var dbErr error
+	Dbdriver := "postgres"
+
+	DBURL := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable password=%s", DbHost, DbPort, DbUser, DbName, DbPassword)
+	db, err := gorm.Open(Dbdriver, DBURL)
+	if err != nil {
+		fmt.Printf("Cannot connect to %s database\n", Dbdriver)
+		log.Fatal("This is the error:", err)
+	} else {
+		fmt.Printf("Connected to the %s database\n", Dbdriver)
+		db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
+	}
+
+	// Create our root query for graphql
+	rootQuery := queries.NewRoot(db)
+	// Create a new graphql schema, passing in the the root query
+	sc, err := graphql.NewSchema(
+		graphql.SchemaConfig{Query: rootQuery.Query},
+	)
+	if err != nil {
+		fmt.Println("Error creating schema: ", err)
+	}
+
+	// Create a server struct that holds a pointer to our database as well
+	// as the address of our graphql schema
+	s := handlers.Server{
+		GqlSchema: &sc,
+	}
+
+	r := gin.Default()
+	r.GET("/ping", handlers.Ping())
+	r.POST("/graph", s.GraphqlHandler())
+
+	log.Println(DbHost + " Running @ http://" + DbHost + ":" + DbPort)
+	log.Fatalln(r.Run(Host + ":" + Port))
+
+	return db, dbErr
+
+}
 
 // Run : run server
 func Run() {
@@ -28,33 +77,17 @@ func Run() {
 	//log.Println(host + "Running @ http://" + ":" + port)
 	//log.Fatalln(r.Run(host + ":" + port))
 
-	// GraphQL
-	// Schema
-	fields := graphql.Fields{
-		"hello": &graphql.Field{
-			Type:              graphql.String,
-			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-				return "world", nil
-			},
-		},
-	}
-	rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
-	schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
-	schema, err := graphql.NewSchema(schemaConfig)
+	db, err := initializeApi()
 	if err != nil {
-		log.Fatalf("failed to create new schema, erro: %v", err)
+		log.Fatalf("Database Error: %v", err)
 	}
 
-	// Query
-	query := `{
-		hello
-	}`
-	params := graphql.Params{Schema: schema, RequestString: query}
-	r := graphql.Do(params)
-	if len(r.Errors) > 0 {
-		log.Fatalf("failed to execute graphql operation, errors: %+v", r.Errors)
-	}
-	rJson, _ := json.Marshal(r)
-	fmt.Printf("%s \n", rJson)
+	defer db.Close()
+
+	// Listen on port 4000 and if there's an error log it and exit
+	//log.Fatal(http.ListenAndServe(":4000", router))
+
+	// GraphQL
+	// Schema
 
 }
