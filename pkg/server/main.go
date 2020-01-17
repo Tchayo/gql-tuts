@@ -62,9 +62,7 @@ func initializeApi() (*gorm.DB, error) {
 
 	r := gin.Default()
 	r.GET("/ping", handlers.Ping())
-	r.GET("/graph-get", s.GraphqlHandler())
-	r.POST("/graph", s.GraphqlHandler())
-	r.POST("/new-message", s.GraphqlHandler())
+	r.POST("/graphql", s.GraphqlHandler())
 
 	log.Println(DbHost + " Running @ http://" + DbHost + ":" + DbPort)
 	log.Fatalln(r.Run(Host + ":" + Port))

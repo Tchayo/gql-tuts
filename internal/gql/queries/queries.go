@@ -25,7 +25,7 @@ func NewRoot(db *gorm.DB) *Root {
 				Fields: graphql.Fields{
 					"message": &graphql.Field{
 						// Slice of Message type found in types.go
-						Type:    graphql.NewList(types.MessageType),
+						Type:    types.MessageType,
 						Args:    graphql.FieldConfigArgument{
 							"id": &graphql.ArgumentConfig{
 								Type:graphql.Int,
