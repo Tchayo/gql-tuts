@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/Tchayo/gql-tuts.git/internal/gql/models"
+	"github.com/Tchayo/gql-tuts.git/internal/gql/mutations"
 	"github.com/Tchayo/gql-tuts.git/internal/gql/queries"
 	"github.com/Tchayo/gql-tuts.git/internal/handlers"
 	"github.com/Tchayo/gql-tuts.git/pkg/utils"
@@ -37,14 +37,18 @@ func initializeApi() (*gorm.DB, error) {
 		log.Fatal("This is the error:", err)
 	} else {
 		fmt.Printf("Connected to the %s database\n", Dbdriver)
-		db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
+		//db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
 	}
 
 	// Create our root query for graphql
 	rootQuery := queries.NewRoot(db)
+	rootMutation := mutations.NewRootMutation(db)
 	// Create a new graphql schema, passing in the the root query
 	sc, err := graphql.NewSchema(
-		graphql.SchemaConfig{Query: rootQuery.Query},
+		graphql.SchemaConfig{
+			Query: rootQuery.Query,
+			Mutation: rootMutation,
+		},
 	)
 	if err != nil {
 		fmt.Println("Error creating schema: ", err)
@@ -58,7 +62,9 @@ func initializeApi() (*gorm.DB, error) {
 
 	r := gin.Default()
 	r.GET("/ping", handlers.Ping())
+	r.GET("/graph-get", s.GraphqlHandler())
 	r.POST("/graph", s.GraphqlHandler())
+	r.POST("/new-message", s.GraphqlHandler())
 
 	log.Println(DbHost + " Running @ http://" + DbHost + ":" + DbPort)
 	log.Fatalln(r.Run(Host + ":" + Port))

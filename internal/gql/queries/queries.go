@@ -20,13 +20,23 @@ func NewRoot(db *gorm.DB) *Root {
 	root := Root{
 		Query: graphql.NewObject(
 			graphql.ObjectConfig{
-				Name: "Query",
+				Name: "MessageQueries",
+				Description: "Get message by ID",
 				Fields: graphql.Fields{
+					"message": &graphql.Field{
+						// Slice of Message type found in types.go
+						Type:    graphql.NewList(types.MessageType),
+						Args:    graphql.FieldConfigArgument{
+							"id": &graphql.ArgumentConfig{
+								Type:graphql.Int,
+							},
+						},
+						Resolve: resolver.MessageResolver,
+					},
 					"messages": &graphql.Field{
 						// Slice of Message type found in types.go
 						Type:    graphql.NewList(types.MessageType),
-						Args:    nil,
-						Resolve: resolver.MessageResolver,
+						Resolve: resolver.MessagesResolvers,
 					},
 				},
 			},
