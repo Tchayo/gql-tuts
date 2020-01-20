@@ -1,7 +1,9 @@
 package resolvers
 
 import (
-	"github.com/Tchayo/gql-tuts.git/internal/gql/models"
+	"errors"
+	"github.com/Tchayo/gql-tuts.git/internal/models"
+	"github.com/Tchayo/gql-tuts.git/internal/utils"
 	"github.com/graphql-go/graphql"
 	"github.com/jinzhu/gorm"
 	"time"
@@ -10,6 +12,40 @@ import (
 // Resolver struct holds a connection to our db
 type Resolver struct {
 	DB *gorm.DB
+}
+
+// CreateUserResolver create new system user
+func (r *Resolver) CreateUserResolver(p graphql.ResolveParams) (interface{}, error) {
+	// marshal and cast argument values
+	username, _ := p.Args["username"].(string)
+	email, _ := p.Args["email"].(string)
+	password, _ := p.Args["password"].(string)
+
+	if username == "" || email == "" || password == "" {
+		return nil, errors.New("all values required")
+	}
+
+	err := utils.ValidateFormat(email)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(password) < 6 {
+		return nil, errors.New("password too short")
+	}
+
+	newUser := models.Author{
+		Name:     username,
+		Email:    email,
+		Password: password,
+	}
+
+	output, err := newUser.SaveUser(r.DB)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+
 }
 
 // MessageResolver resolves our query through a db call to FindUserByID
@@ -42,6 +78,10 @@ func (r *Resolver) CreateMessageResolver(p graphql.ResolveParams) (interface{}, 
 	scheduled, _ := p.Args["message"].(bool)
 	sTime, _ := p.Args["schedule_time"].(time.Time)
 
+	if short == "" || number == "" || text == "" {
+		return nil, errors.New("shortcode, number and message required")
+	}
+
 	// perform mutation
 	newMessage := models.Message{
 		ID:           0,
@@ -59,4 +99,3 @@ func (r *Resolver) CreateMessageResolver(p graphql.ResolveParams) (interface{}, 
 	}
 	return output, nil
 }
-

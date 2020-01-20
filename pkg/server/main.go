@@ -5,6 +5,7 @@ import (
 	"github.com/Tchayo/gql-tuts.git/internal/gql/mutations"
 	"github.com/Tchayo/gql-tuts.git/internal/gql/queries"
 	"github.com/Tchayo/gql-tuts.git/internal/handlers"
+	"github.com/Tchayo/gql-tuts.git/internal/models"
 	"github.com/Tchayo/gql-tuts.git/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -37,7 +38,7 @@ func initializeApi() (*gorm.DB, error) {
 		log.Fatal("This is the error:", err)
 	} else {
 		fmt.Printf("Connected to the %s database\n", Dbdriver)
-		//db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
+		db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
 	}
 
 	// Create our root query for graphql

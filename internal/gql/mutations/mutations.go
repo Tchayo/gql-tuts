@@ -21,6 +21,22 @@ func NewRootMutation(db *gorm.DB) *graphql.Object {
 		graphql.ObjectConfig{
 			Name: "RootMutation",
 			Fields: graphql.Fields{
+				"newUser": &graphql.Field{
+					Type: types.NewAuthorType,
+					Args: graphql.FieldConfigArgument{
+						"username": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+						"email": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+						"password": &graphql.ArgumentConfig{
+							Type: graphql.String,
+						},
+					},
+					Resolve:     resolver.CreateUserResolver,
+					Description: "Create new system user",
+				},
 				"createMessage": &graphql.Field{
 					Type: types.MessageType,
 					Args: graphql.FieldConfigArgument{
@@ -29,8 +45,8 @@ func NewRootMutation(db *gorm.DB) *graphql.Object {
 							Description: "",
 						},
 						"number": &graphql.ArgumentConfig{
-							Type: graphql.NewNonNull(graphql.String),
-							Description:  "",
+							Type:        graphql.NewNonNull(graphql.String),
+							Description: "",
 						},
 						"message": &graphql.ArgumentConfig{
 							Type:        graphql.NewNonNull(graphql.String),

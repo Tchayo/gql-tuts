@@ -2,6 +2,24 @@ package types
 
 import "github.com/graphql-go/graphql"
 
+var NewAuthorType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "Author",
+		Fields: graphql.Fields{
+			"name": &graphql.Field{
+				Type: graphql.String,
+			},
+			"email": &graphql.Field{
+				Type: graphql.String,
+			},
+			"password": &graphql.Field{
+				Type: graphql.String,
+			},
+		},
+		Description: "Create Message author",
+	},
+)
+
 var AuthorType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Author",

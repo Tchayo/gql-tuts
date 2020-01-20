@@ -13,7 +13,7 @@ type Message struct {
 	Scheduled    bool      `gorm:"default:false" json:"scheduled"`
 	ScheduleTime time.Time `json:"schedule_time"`
 	Status       string    `gorm:"size:100;null" json:"status"`
-	Author       Author    `json:"author"`
+	AuthorID     uint32    `json:"author_id"`
 	CreatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
