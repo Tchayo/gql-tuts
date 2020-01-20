@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 	"html"
@@ -20,8 +21,8 @@ func HashPassword(originalPassword string) (string, error)  {
 	return string(pass), err
 }
 
-// ComparePassword compare password
-func ComparePassword(password, hash string) bool {
+// comparePassword compare password
+func comparePassword(password, hash string) bool {
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil {
 		return true
 	}
@@ -47,4 +48,32 @@ func (u *Author) SaveUser(db *gorm.DB) (*Author, error) {
 	// hide user password
 	u.Password = ""
 	return u, nil
+}
+
+// FindUserByEmail : description
+func (u *Author) FindUserByEmail(db *gorm.DB, email string) (*Author, error) {
+	var err error
+	err = db.Debug().Model(Author{}).Where("email = ?", email).Take(&u).Error
+	if err != nil {
+		return &Author{}, err
+	}
+	if gorm.IsRecordNotFoundError(err) {
+		return &Author{}, errors.New("user not found")
+	}
+	return u, err
+
+}
+
+func (u *Author) Login(db *gorm.DB, email string, password string) (*Author, error) {
+
+	user, err :=u.FindUserByEmail(db, email)
+	if err != nil {
+		return &Author{}, err
+	}
+
+	if !comparePassword(password, user.Password) {
+		return nil, errors.New("incorrect password")
+	}
+
+	return user, nil
 }

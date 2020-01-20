@@ -22,7 +22,7 @@ func (r *Resolver) CreateUserResolver(p graphql.ResolveParams) (interface{}, err
 	password, _ := p.Args["password"].(string)
 
 	if username == "" || email == "" || password == "" {
-		return nil, errors.New("all values required")
+
 	}
 
 	err := utils.ValidateFormat(email)

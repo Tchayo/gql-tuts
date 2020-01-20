@@ -2,20 +2,30 @@ package server
 
 import (
 	"fmt"
+	"github.com/Tchayo/gql-tuts.git/internal/auth"
 	"github.com/Tchayo/gql-tuts.git/internal/gql/mutations"
 	"github.com/Tchayo/gql-tuts.git/internal/gql/queries"
 	"github.com/Tchayo/gql-tuts.git/internal/handlers"
-	"github.com/Tchayo/gql-tuts.git/internal/models"
 	"github.com/Tchayo/gql-tuts.git/pkg/utils"
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"log"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	_ "github.com/jinzhu/gorm/dialects/postgres" //postgres database driver
 )
 
-var Host, Port, DbHost, DbPort, DbUser, DbName, DbPassword string
+var (
+	DbHost     string
+	Port       string
+	DbPort     string
+	DbUser     string
+	DbName     string
+	DbPassword string
+	Host       string
+)
 
 func init() {
 	Host = utils.MustGet("SERVER_HOST")
@@ -29,6 +39,8 @@ func init() {
 
 func initializeApi() (*gorm.DB, error) {
 	var dbErr error
+	var identityKey = "id"
+
 	Dbdriver := "postgres"
 
 	DBURL := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable password=%s", DbHost, DbPort, DbUser, DbName, DbPassword)
@@ -38,7 +50,7 @@ func initializeApi() (*gorm.DB, error) {
 		log.Fatal("This is the error:", err)
 	} else {
 		fmt.Printf("Connected to the %s database\n", Dbdriver)
-		db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
+		//db.Debug().AutoMigrate(&models.Author{}, &models.Message{}) //database migration
 	}
 
 	// Create our root query for graphql
@@ -47,7 +59,7 @@ func initializeApi() (*gorm.DB, error) {
 	// Create a new graphql schema, passing in the the root query
 	sc, err := graphql.NewSchema(
 		graphql.SchemaConfig{
-			Query: rootQuery.Query,
+			Query:    rootQuery.Query,
 			Mutation: rootMutation,
 		},
 	)
@@ -62,8 +74,45 @@ func initializeApi() (*gorm.DB, error) {
 	}
 
 	r := gin.Default()
-	r.GET("/ping", handlers.Ping())
-	r.POST("/graphql", s.GraphqlHandler())
+	r.Use(gin.Recovery())
+
+	// get db for auth validation
+	dbcon := auth.DataB{}
+	dbcon.DB = db
+
+	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
+		Realm:         "Bulk API test zone",
+		Key:           []byte("secret key"),
+		Timeout:       time.Hour,
+		MaxRefresh:    time.Hour,
+		Authenticator: dbcon.AuthenticatorFunction,
+		Authorizator:  nil,
+		PayloadFunc:   nil,
+		Unauthorized:  auth.UnauthorizedFunction,
+		IdentityKey:   identityKey,
+		TokenLookup:   "header: Authorization, query: token, cookie: jwt",
+		TokenHeadName: "Bearer",
+		TimeFunc:      time.Now,
+	})
+
+	if err != nil {
+		log.Fatal("JWT Error:" + err.Error())
+	}
+
+	r.POST("/login", authMiddleware.LoginHandler)
+	r.NoRoute(authMiddleware.MiddlewareFunc(), func(c *gin.Context) {
+		claims := jwt.ExtractClaims(c)
+		log.Printf("NoRoute claims: %#v\n", claims)
+		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
+	})
+
+	auth := r.Group("/auth")
+	auth.GET("/refresh_token", authMiddleware.RefreshHandler)
+	auth.Use(authMiddleware.MiddlewareFunc())
+	{
+		auth.GET("/ping", handlers.Ping())
+		auth.POST("/graphql", s.GraphqlHandler())
+	}
 
 	log.Println(DbHost + " Running @ http://" + DbHost + ":" + DbPort)
 	log.Fatalln(r.Run(Host + ":" + Port))
